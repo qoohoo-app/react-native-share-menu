@@ -159,42 +159,69 @@ class ShareViewController: SLComposeServiceViewController {
         self.exit(withError: error.debugDescription)
         return
       }
-      guard let url = data as? URL else {
-        self.exit(withError: COULD_NOT_FIND_IMG_ERROR)
-        return
-      }
-      guard let hostAppId = self.hostAppId else {
-        self.exit(withError: NO_INFO_PLIST_INDENTIFIER_ERROR)
-        return
-      }
-      guard let userDefaults = UserDefaults(suiteName: "group.\(hostAppId)") else {
-        self.exit(withError: NO_APP_GROUP_ERROR)
-        return
-      }
-      guard let groupFileManagerContainer = FileManager.default
-              .containerURL(forSecurityApplicationGroupIdentifier: "group.\(hostAppId)")
-      else {
-        self.exit(withError: NO_APP_GROUP_ERROR)
+      
+      if let url = data as? URL {
+        self.prepareAndMoveFileToDisk(withUrl: url)
+        self.openHostApp()
         return
       }
       
-      let mimeType = url.extractMimeType()
-      let fileExtension = url.pathExtension
-      let fileName = UUID().uuidString
-      let filePath = groupFileManagerContainer
-        .appendingPathComponent("\(fileName).\(fileExtension)")
-      
-      guard self.moveFileToDisk(from: url, to: filePath) else {
-        self.exit(withError: COULD_NOT_SAVE_FILE_ERROR)
+      if let image = data as? UIImage {
+        let imageData: Data! = image.pngData();
+
+        // Creating temporary URL for image data (UIImage)
+        guard let url = NSURL(fileURLWithPath: NSTemporaryDirectory()).appendingPathComponent("TemporaryScreenshot.png") else {
+            return
+        }
+
+        do {
+            // Writing the image to the URL
+            try imageData.write(to: url)
+        } catch {
+            self.exit(withError: COULD_NOT_FIND_URL_ERROR)
+            return
+        }
+         
+        self.prepareAndMoveFileToDisk(withUrl: url)
+        self.openHostApp()
         return
       }
       
-      userDefaults.set([DATA_KEY: filePath.absoluteString,  MIME_TYPE_KEY: mimeType],
-                       forKey: USER_DEFAULTS_KEY)
-      userDefaults.synchronize()
-      
-      self.openHostApp()
+      self.exit(withError: COULD_NOT_FIND_URL_ERROR)
+      return
     }
+  }
+  
+  func prepareAndMoveFileToDisk(withUrl url: URL) {
+    guard let hostAppId = self.hostAppId else {
+      self.exit(withError: NO_INFO_PLIST_INDENTIFIER_ERROR)
+      return
+    }
+    guard let userDefaults = UserDefaults(suiteName: "group.\(hostAppId)") else {
+      self.exit(withError: NO_APP_GROUP_ERROR)
+      return
+    }
+    guard let groupFileManagerContainer = FileManager.default
+            .containerURL(forSecurityApplicationGroupIdentifier: "group.\(hostAppId)")
+    else {
+      self.exit(withError: NO_APP_GROUP_ERROR)
+      return
+    }
+    
+    let mimeType = url.extractMimeType()
+    let fileExtension = url.pathExtension
+    let fileName = UUID().uuidString
+    let filePath = groupFileManagerContainer
+      .appendingPathComponent("\(fileName).\(fileExtension)")
+    
+    guard self.moveFileToDisk(from: url, to: filePath) else {
+      self.exit(withError: COULD_NOT_SAVE_FILE_ERROR)
+      return
+    }
+    
+    userDefaults.set([DATA_KEY: filePath.absoluteString,  MIME_TYPE_KEY: mimeType],
+                     forKey: USER_DEFAULTS_KEY)
+    userDefaults.synchronize()
   }
 
   func moveFileToDisk(from srcUrl: URL, to destUrl: URL) -> Bool {
@@ -244,5 +271,4 @@ class ShareViewController: SLComposeServiceViewController {
   func cancelRequest() {
     extensionContext!.cancelRequest(withError: NSError())
   }
-
 }
