@@ -59,8 +59,10 @@ public class ShareMenuModule extends ReactContextBaseJavaModule implements Activ
     data.putString(MIME_TYPE_KEY, type);
 
     if (Intent.ACTION_SEND.equals(action)) {
-      if ("text/plain".equals(type)) {
-        data.putString(DATA_KEY, intent.getStringExtra(Intent.EXTRA_TEXT));
+      String sharedData = intent.getStringExtra(Intent.EXTRA_TEXT);
+
+      if (sharedData != null) {
+        data.putString(DATA_KEY, sharedData);
         return data;
       }
 
