@@ -65,7 +65,12 @@ class ShareViewController: SLComposeServiceViewController {
     }
 
     if provider.isText {
-      storeText(withProvider: provider)
+      // NOTE: Corner case when file being shared is a text file
+      if provider.isFileURL {
+        storeFile(withProvider: provider)
+      } else {
+        storeText(withProvider: provider)
+      }
     } else if provider.isURL {
       storeUrl(withProvider: provider)
     } else {
